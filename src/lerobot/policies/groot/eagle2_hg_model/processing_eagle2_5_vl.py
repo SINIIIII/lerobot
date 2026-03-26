@@ -217,12 +217,37 @@ class Eagle25VLProcessor(ProcessorMixin):
                     9: "tenth",
                 }
                 if media_type == "image":
+                    # --- [여기부터 수정된 코드] ---
+                    # 누락되었던 return_tensors="pt" 옵션을 강제로 주입합니다.
+                    kwargs = output_kwargs.get("images_kwargs", {}).copy()
+                    kwargs["return_tensors"] = "pt"
+                    
+                    image_inputs = self.image_processor(
+                        images=[image_list[idx_in_list]],
+                        videos=None,
+                        **kwargs,
+                    )
+                    
+                    # 이제 image_inputs는 완벽한 텐서 형태이므로 에러가 나지 않습니다.
+                    num_all_tiles = image_inputs["pixel_values"].shape[0]
+                    # --- [여기까지 수정] ---
+                    '''
+                if media_type == "image":
                     image_inputs = self.image_processor(
                         images=[image_list[idx_in_list]],
                         videos=None,
                         **output_kwargs["images_kwargs"],
                     )
+                    #se_revised
+                    import torch
+                    pv = image_inputs["pixel_values"]
+                    if isinstance(pv, list):
+                        # 리스트 안에 텐서가 있다면 하나로 합치고, 아니라면 텐서로 새로 만듭니다.
+                        image_inputs["pixel_values"] = torch.cat(pv, dim=0) if isinstance(pv[0], torch.Tensor) else torch.tensor(pv)
+                    #
                     num_all_tiles = image_inputs["pixel_values"].shape[0]
+                    '''
+                    
                     special_placeholder = f"<image {idx_in_list + 1}>{self.image_start_token}{self.image_token * num_all_tiles * self.tokens_per_tile}{self.image_end_token}"
                     unified_frame_list.append(image_inputs)
                     num_of_images_in_this_sample += 1

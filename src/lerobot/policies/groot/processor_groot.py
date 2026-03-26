@@ -511,6 +511,7 @@ def collate(features: list[dict[str, Any]], eagle_processor: ProcessorMixin) -> 
                 curr_image_inputs = v["image_inputs"]
                 text_list += curr_text_list
                 image_inputs += curr_image_inputs
+            
             eagle_inputs = eagle_processor(
                 text=text_list,
                 images=image_inputs,
@@ -518,9 +519,24 @@ def collate(features: list[dict[str, Any]], eagle_processor: ProcessorMixin) -> 
                 return_tensors="pt",
                 padding=True,
             )
+            #se_revised
+            for k, v in eagle_inputs.items():
+                k = "eagle_" + k
+                # --- [여기부터 추가할 부분] ---
+                # 만약 v가 리스트형태라면 텐서로 변환해줍니다.
+                if isinstance(v, list):
+                    import torch
+                    try:
+                        v = torch.tensor(v)
+                    except ValueError:
+                        pass 
+                # --- [여기까지 추가] ---
+                batch[k] = v
+            '''
             for k, v in eagle_inputs.items():
                 k = "eagle_" + k
                 batch[k] = v
+            '''
         elif key in ("pixel_values", "image_grid_thw", "attention_mask", "input_ids"):
             # Concat in existing batch dimension.
             batch[key] = torch.cat(values)

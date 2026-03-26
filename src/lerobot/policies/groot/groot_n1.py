@@ -22,8 +22,10 @@ import torch
 import torch.nn as nn
 from huggingface_hub import snapshot_download
 from huggingface_hub.errors import HFValidationError, RepositoryNotFoundError
+from huggingface_hub import PyTorchModelHubMixin
 
 from lerobot.utils.import_utils import _transformers_available
+#from transformers import AutoConfig
 
 # Conditional import for type checking and lazy loading
 if TYPE_CHECKING or _transformers_available:
@@ -81,6 +83,8 @@ class EagleBackbone(nn.Module):
         except Exception as exc:  # nosec: B110
             print(f"[GROOT] Warning: failed to prepare Eagle cache for backbone: {exc}")
 
+        #se_revised
+        from transformers import AutoConfig
         config = AutoConfig.from_pretrained(str(cache_dir), trust_remote_code=True)
         self.eagle_model = AutoModel.from_config(config, trust_remote_code=True)
 
@@ -186,13 +190,16 @@ class GR00TN15Config(PretrainedConfig):
     compute_dtype: str = field(default="float32", metadata={"help": "Compute dtype."})
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        #se_revised
+        super().__init__()
         for key, value in kwargs.items():
             setattr(self, key, value)
 
 
 # real model
-class GR00TN15(PreTrainedModel):
+# se_revised
+# class GR00TN15(PreTrainedModel):
+class GR00TN15(nn.Module, PyTorchModelHubMixin):
     supports_gradient_checkpointing = True
     config_class = GR00TN15Config
     """
@@ -210,7 +217,10 @@ class GR00TN15(PreTrainedModel):
         assert isinstance(config.backbone_cfg, dict)
         assert isinstance(config.action_head_cfg, dict)
 
-        super().__init__(config)
+        #se_revised
+        super().__init__()
+        self.config = config
+
         self.local_model_path = local_model_path
 
         self.backbone = EagleBackbone(**config.backbone_cfg)
@@ -220,6 +230,10 @@ class GR00TN15(PreTrainedModel):
         self.action_horizon = config.action_horizon
         self.action_dim = config.action_dim
         self.compute_dtype = config.compute_dtype
+    
+    @property
+    def device(self):
+        return next(self.parameters()).device
 
     def validate_inputs(self, inputs):
         # NOTE -- this should be handled internally by the model
